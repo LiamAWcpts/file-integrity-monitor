@@ -11,7 +11,12 @@ std::string hashFile(const std::string &fp){
 
   //setup the hash thing from openssl
   EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-  EVP_DigestInit_ex(ctx, EVP_sha256(),nullptr);
+  //this can give back null if it runs out of memory, using it after would crash
+  if(ctx==nullptr) return "";
+  if(EVP_DigestInit_ex(ctx, EVP_sha256(),nullptr)!=1){
+    EVP_MD_CTX_free(ctx);
+    return "";
+  }
 
   //read file in chunks so big files dont break it
   char buf[4096];
@@ -19,11 +24,18 @@ std::string hashFile(const std::string &fp){
     EVP_DigestUpdate(ctx, buf, f.gcount());
   }
 
+  //if reading broke partway thru (not just hitting the end) the hash would be wrong
+  if(f.bad()){
+    EVP_MD_CTX_free(ctx);
+    return "";
+  }
+
   //get the final hash
   unsigned char dig[EVP_MAX_MD_SIZE];
   unsigned int len=0;
-  EVP_DigestFinal_ex(ctx,dig,&len);
+  int ok = EVP_DigestFinal_ex(ctx,dig,&len);
   EVP_MD_CTX_free(ctx);
+  if(ok!=1) return "";
 
   //bytes to hex string
   std::stringstream ss;
