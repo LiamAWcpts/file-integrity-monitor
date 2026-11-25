@@ -10,6 +10,9 @@ typedef std::map<std::string,std::string> Tbl;
 //list of stuff to skip from -x
 typedef std::vector<std::string> ExList;
 
+//true when -q is used, its in main.cpp
+extern bool quiet;
+
 //goes thru the folder and hashes everything
 Tbl scan(const std::string &dir, const std::string &skip1, const std::string &skip2, const ExList &ex);
 

@@ -23,6 +23,8 @@ bool isExcluded(const std::string &rel, const ExList &ex){
     }
     //anything else has to match the whole path
     else if(rel==pat) return true;
+    //or its a folder name wo the / so skip whats inside it too (like -x logs)
+    else if(rel.compare(0,pat.size()+1,pat + "/")==0) return true;
   }
   return false;
 }
@@ -36,7 +38,7 @@ void scanDir(const fs::path &cur, const std::string &relDir, const std::string &
   std::error_code ec;
   fs::directory_iterator it(cur, fs::directory_options::skip_permission_denied, ec);
   if(ec){
-    std::cerr<<"cant open folder "<<cur.string()<<" ("<<ec.message()<<")"<<std::endl;
+    if(!quiet) std::cerr<<"cant open folder "<<cur.string()<<" ("<<ec.message()<<")"<<std::endl;
     return;
   }
 
@@ -64,7 +66,7 @@ void scanDir(const fs::path &cur, const std::string &relDir, const std::string &
     if(full==s1 || full==s2) continue;
 
     std::string h = hashFile(ent.path().string());
-    if(h==""){
+    if(h=="" && !quiet){
       std::cerr<<"cant read "<<ent.path().string()<<std::endl;
     }
 
@@ -73,7 +75,7 @@ void scanDir(const fs::path &cur, const std::string &relDir, const std::string &
   }
 
   //if moving to the next file broke, the loop just ends so say so
-  if(ec) std::cerr<<"stopped reading "<<cur.string()<<" early ("<<ec.message()<<")"<<std::endl;
+  if(ec && !quiet) std::cerr<<"stopped reading "<<cur.string()<<" early ("<<ec.message()<<")"<<std::endl;
 }
 
 

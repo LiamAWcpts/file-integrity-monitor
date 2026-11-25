@@ -9,6 +9,9 @@
 
 namespace fs = std::filesystem;
 
+//-q turns this on so it only prints real errors, the exit code still says what happened
+bool quiet=false;
+
 //gets the time as a string for the log
 std::string getTime(){
   std::time_t now = std::time(nullptr);
@@ -23,7 +26,8 @@ std::string getTime(){
 //prints the alert and puts it in the log
 void alert(std::ofstream &log, const std::string &type, const std::string &p){
   std::string msg = "[" + getTime() + "] " + type + " " + p;
-  std::cout<<msg<<std::endl;
+  //still goes in the log even w -q
+  if(!quiet) std::cout<<msg<<std::endl;
   log<<msg<<"\n";
 }
 
@@ -32,6 +36,7 @@ void usage(){
   std::cout<<"  fim init  <folder> [baseline file] [log file] [-x pattern]..."<<std::endl;
   std::cout<<"  fim check <folder> [baseline file] [log file] [-x pattern]..."<<std::endl;
   std::cout<<"  -x skips stuff, like -x logs/ or -x '*.tmp' or -x notes.txt"<<std::endl;
+  std::cout<<"  -q or --quiet only prints real errors, use the exit code (0 no changes, 1 error, 2 changes)"<<std::endl;
 }
 
 
@@ -49,7 +54,7 @@ int doInit(const std::string &dir, const std::string &blPath, const std::string 
     if(it.second!="") n++;
   }
 
-  std::cout<<"saved baseline w "<<n<<" files to "<<blPath<<std::endl;
+  if(!quiet) std::cout<<"saved baseline w "<<n<<" files to "<<blPath<<std::endl;
   return 0;
 }
 
@@ -67,6 +72,7 @@ int doCheck(const std::string &dir, const std::string &blPath, const std::string
 
   std::ofstream log(logPath, std::ios::app);
   //before if this didnt open the alerts just silently didnt get saved
+  //this one prints even w -q bc otherwise the changes wouldnt show up anywhere
   if(!log.is_open()){
     std::cerr<<"couldnt open log "<<logPath<<", changes will only show here"<<std::endl;
   }
@@ -101,18 +107,18 @@ int doCheck(const std::string &dir, const std::string &blPath, const std::string
   }
 
   if(cnt==0){
-    std::cout<<"no changes, checked "<<newTbl.size()<<" files"<<std::endl;
+    if(!quiet) std::cout<<"no changes, checked "<<newTbl.size()<<" files"<<std::endl;
     return 0;
   }
 
-  std::cout<<cnt<<" change(s) found, saved to "<<logPath<<std::endl;
+  if(!quiet) std::cout<<cnt<<" change(s) found, saved to "<<logPath<<std::endl;
   //return 2 so cron or a script knows something changed
   return 2;
 }
 
 
 int main(int argc, char *argv[]){
-  //pull out the -x ones first, everything else stays in order like before
+  //pull out the -x and -q ones first, everything else stays in order like before
   std::vector<std::string> args;
   ExList ex;
   for(int i=1; i<argc; i++){
@@ -125,6 +131,7 @@ int main(int argc, char *argv[]){
       ex.push_back(argv[i+1]);
       i++;
     }
+    else if(a=="-q" || a=="--quiet") quiet=true;
     else args.push_back(a);
   }
 

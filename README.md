@@ -1,5 +1,7 @@
 # FIM - file integrity monitor
 
+![tests](https://github.com/LiamAWcpts/file-integrity-monitor/actions/workflows/test.yml/badge.svg)
+
 this is a command line tool i made in c++ that tells you if files in a folder got changed. it saves a sha256 hash of every file, then later when you run it again it compares and tells you what got modified, added or deleted
 
 its basically a small version of stuff like tripwire or ossec, which are used to catch if someone messed with files on a system (like changing a config file or sneaking in a script)
@@ -56,6 +58,22 @@ it also gives back an exit code, 0 means nothing changed, 1 means an error, 2 me
 0 * * * * /path/to/fim check /path/to/folder /path/to/baseline.txt /path/to/fim.log
 ```
 
+if you dont want it printing anything (cron emails you all the output) use -q or --quiet. it still writes to the log and still gives back the same exit code, it just doesnt print the alerts:
+
+```
+0 * * * * /path/to/fim check /path/to/folder /path/to/baseline.txt /path/to/fim.log -q
+```
+
+## how to test it
+
+theres a test script that builds it and runs it thru a bunch of cases (changes, -x, CANTREAD, -q, bad args and stuff like that):
+
+```
+bash test.sh
+```
+
+it prints PASS or FAIL for each one and gives back 0 if everything passed. it does all of it in a temp folder so it doesnt mess up anything in the repo
+
 ## how it works
 
 when you run init it goes thru every file in the folder (and the folders inside it) and hashes each one, then writes the hash and the path to the baseline file. it reads files in chunks so really big files dont eat all the memory.
@@ -107,6 +125,26 @@ the -x stuff can go anywhere so the old way of giving the baseline and log names
 ```
 
 the matching is in baseline.cpp (isExcluded) and main.cpp pulls the -x ones out of the args before reading the rest like before
+
+### tests
+
+added test.sh with 30 tests. it makes a fresh folder for each test, changes stuff in it, runs fim and checks the exit code and the output. theres 3 helpers in it, expect (output has to have some text), expectNot (output cant have some text) and expectEmpty (no output at all, for -q)
+
+the CANTREAD test gets skipped if you run it as root bc root can read files even w chmod 000
+
+writing the tests actually found a bug, -x logs (wo the /) skipped the folder when scanning but check still said everything in it was DELETED bc the old baseline still had those files. now a pattern wo the / also counts as a folder name so -x logs and -x logs/ do the same thing
+
+### github actions
+
+theres a workflow in .github/workflows/test.yml that runs test.sh on github every time something gets pushed. it installs g++, make and openssl on ubuntu and then runs the tests, so every commit gets a green check or a red x. the badge at the top of this readme shows if the last run passed
+
+### -q quiet mode
+
+-q or --quiet makes it not print the alerts or the "saved baseline" / "no changes" lines, and it hides the "cant read" warnings too. the log still gets written and the exit code is the same so a script can still tell what happened
+
+it still prints real errors (like if the folder doesnt exist) and it still warns you if the log cant be opened, bc w -q on that would be the only way youd find out about the changes
+
+-q is a global in main.cpp and baseline.h has an extern for it so baseline.cpp can use it too
 
 ## stuff i want to add / problems
 
